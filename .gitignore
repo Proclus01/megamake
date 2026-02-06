@@ -36,3 +36,7 @@ go.work.sum
 
 # Ignore user-defined artifacts (chats, env, etc.)
 /megamake/artifacts/
+
+# filesystem artifacts
+.DS_Store
+**/.DS_Store
