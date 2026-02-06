@@ -16,9 +16,9 @@ import (
 	contractartifact "github.com/megamake/megamake/internal/contracts/v1/artifact"
 	contractdoc "github.com/megamake/megamake/internal/contracts/v1/doc"
 	project "github.com/megamake/megamake/internal/contracts/v1/project"
-	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	docdomain "github.com/megamake/megamake/internal/domains/doc/domain"
 	"github.com/megamake/megamake/internal/domains/doc/ports"
+	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	"github.com/megamake/megamake/internal/platform/clock"
 	"github.com/megamake/megamake/internal/platform/policy"
 )
@@ -68,7 +68,7 @@ type CreateResult struct {
 // GetRequest drives `megamake doc get`.
 // URIs can be http(s), file://, absolute paths, or relative paths.
 type GetRequest struct {
-	URIs       []string
+	URIs        []string
 	ArtifactDir string
 
 	CrawlDepth int
@@ -527,9 +527,9 @@ func itoa(n int) string {
 ///////////////////////////////////////////////////////////////////////////////
 
 type docFetcher struct {
-	policy    policy.Policy
-	maxDepth  int
-	client    *http.Client
+	policy   policy.Policy
+	maxDepth int
+	client   *http.Client
 }
 
 func newDocFetcher(pol policy.Policy, maxDepth int) *docFetcher {
@@ -583,7 +583,7 @@ func isLocalURI(uri string) bool {
 		return true
 	}
 	// Windows-like paths are not expected on macOS, but we keep conservative.
-	if len(uri) >= 2 && ((uri[1] == ':' && (uri[2:3] == "\\" || uri[2:3] == "/"))) {
+	if len(uri) >= 2 && (uri[1] == ':' && (uri[2:3] == "\\" || uri[2:3] == "/")) {
 		return true
 	}
 	return false

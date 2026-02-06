@@ -8,10 +8,10 @@ import (
 
 // WriteArtifactRequest is a tool-agnostic request for writing a .txt artifact and latest pointer.
 type WriteArtifactRequest struct {
-	ArtifactDir     string
-	ToolPrefix      string
-	Envelope        contractartifact.ArtifactEnvelopeV1
-	GeneratedAtUTC  *time.Time
+	ArtifactDir    string
+	ToolPrefix     string
+	Envelope       contractartifact.ArtifactEnvelopeV1
+	GeneratedAtUTC *time.Time
 }
 
 type ArtifactWriter interface {

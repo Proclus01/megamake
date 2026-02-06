@@ -19,11 +19,11 @@ const (
 type UMLNodeKind string
 
 const (
-	NodeModule    UMLNodeKind = "module"
-	NodeExternal  UMLNodeKind = "external"
+	NodeModule     UMLNodeKind = "module"
+	NodeExternal   UMLNodeKind = "external"
 	NodeDatasource UMLNodeKind = "datasource"
-	NodeEndpoint  UMLNodeKind = "endpoint"
-	NodeMain      UMLNodeKind = "main"
+	NodeEndpoint   UMLNodeKind = "endpoint"
+	NodeMain       UMLNodeKind = "main"
 )
 
 type UMLEdgeRel string
@@ -451,13 +451,13 @@ func groupFor(label string) string {
 }
 
 type ioFlags struct {
-	fsRead     bool
-	fsWrite    bool
-	network    bool
-	db         bool
-	env        bool
+	fsRead      bool
+	fsWrite     bool
+	network     bool
+	db          bool
+	env         bool
 	concurrency bool
-	dbKind     string
+	dbKind      string
 }
 
 func (a ioFlags) merged(b ioFlags) ioFlags {
@@ -649,21 +649,22 @@ func min(a, b int) int {
 	}
 	return b
 }
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	sign := ""
-	if n < 0 {
-		sign = "-"
-		n = -n
-	}
-	var buf [32]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + (n % 10))
-		n /= 10
-	}
-	return sign + string(buf[i:])
-}
+
+// func itoa(n int) string {
+// 	if n == 0 {
+// 		return "0"
+// 	}
+// 	sign := ""
+// 	if n < 0 {
+// 		sign = "-"
+// 		n = -n
+// 	}
+// 	var buf [32]byte
+// 	i := len(buf)
+// 	for n > 0 {
+// 		i--
+// 		buf[i] = byte('0' + (n % 10))
+// 		n /= 10
+// 	}
+// 	return sign + string(buf[i:])
+// }

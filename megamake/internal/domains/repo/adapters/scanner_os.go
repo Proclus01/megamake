@@ -13,6 +13,8 @@ import (
 	"github.com/megamake/megamake/internal/platform/glob"
 )
 
+var _ = os.PathSeparator
+
 type OSScanner struct{}
 
 func NewOSScanner() OSScanner {

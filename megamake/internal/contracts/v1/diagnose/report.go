@@ -34,8 +34,8 @@ type LanguageDiagnosticsV1 struct {
 
 type DiagnosticsReportV1 struct {
 	Languages   []LanguageDiagnosticsV1 `json:"languages"`
-	GeneratedAt string                 `json:"generatedAt"` // RFC3339Nano UTC
-	Warnings    []string               `json:"warnings,omitempty"`
+	GeneratedAt string                  `json:"generatedAt"` // RFC3339Nano UTC
+	Warnings    []string                `json:"warnings,omitempty"`
 }
 
 // ToXML renders pseudo-XML diagnostics output and embeds the fix prompt text.

@@ -15,12 +15,12 @@ import (
 )
 
 type Runner struct {
-	RootPath        string
-	Timeout         time.Duration
-	IncludeTests    bool
-	IgnoreNames     []string
-	IgnoreGlobs     []string
-	Exec            ports.Exec
+	RootPath     string
+	Timeout      time.Duration
+	IncludeTests bool
+	IgnoreNames  []string
+	IgnoreGlobs  []string
+	Exec         ports.Exec
 }
 
 func (r Runner) Run(profile project.ProjectProfileV1, pyRelFiles []string) (contract.DiagnosticsReportV1, []string) {
@@ -321,7 +321,7 @@ func (r Runner) runJava(warnings *[]string) contract.LanguageDiagnosticsV1 {
 		}
 		res := r.Exec.Run(gradlePath, []string{"-q", task}, r.RootPath, r.Timeout)
 		issues := ParseJava(res.Stdout, res.Stderr)
-		return contract.LanguageDiagnosticsV1{Name: "java", Tool: "gradle "+task, Issues: issues}
+		return contract.LanguageDiagnosticsV1{Name: "java", Tool: "gradle " + task, Issues: issues}
 	}
 
 	*warnings = append(*warnings, "no Maven/Gradle found; skipping Java diagnostics")

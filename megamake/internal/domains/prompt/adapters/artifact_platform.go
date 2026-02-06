@@ -17,9 +17,9 @@ func NewPlatformArtifactWriter(w artifactwriter.Writer) PlatformArtifactWriter {
 
 func (p PlatformArtifactWriter) WriteToolArtifact(req ports.WriteArtifactRequest) (string, string, error) {
 	return p.Writer.WriteToolArtifact(artifactwriter.WriteRequest{
-		ArtifactDir:     req.ArtifactDir,
-		ToolPrefix:      req.ToolPrefix,
-		Envelope:        req.Envelope,
-		GeneratedAtUTC:  req.GeneratedAtUTC,
+		ArtifactDir:    req.ArtifactDir,
+		ToolPrefix:     req.ToolPrefix,
+		Envelope:       req.Envelope,
+		GeneratedAtUTC: req.GeneratedAtUTC,
 	})
 }

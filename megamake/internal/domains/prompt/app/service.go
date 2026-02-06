@@ -7,19 +7,19 @@ import (
 	"time"
 
 	contractartifact "github.com/megamake/megamake/internal/contracts/v1/artifact"
-	contractprompt "github.com/megamake/megamake/internal/contracts/v1/prompt"
 	project "github.com/megamake/megamake/internal/contracts/v1/project"
-	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
+	contractprompt "github.com/megamake/megamake/internal/contracts/v1/prompt"
 	promptdomain "github.com/megamake/megamake/internal/domains/prompt/domain"
 	"github.com/megamake/megamake/internal/domains/prompt/ports"
+	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	"github.com/megamake/megamake/internal/platform/clock"
 )
 
 type Service struct {
-	Clock         clock.Clock
-	Repo          repoapi.API
+	Clock          clock.Clock
+	Repo           repoapi.API
 	ArtifactWriter ports.ArtifactWriter
-	Clipboard     ports.Clipboard
+	Clipboard      ports.Clipboard
 }
 
 type GenerateRequest struct {
@@ -35,10 +35,10 @@ type GenerateRequest struct {
 }
 
 type GenerateResult struct {
-	ContextXML   string
-	Report       contractprompt.PromptReportV1
-	ReportJSON   string
-	AgentPrompt  string
+	ContextXML  string
+	Report      contractprompt.PromptReportV1
+	ReportJSON  string
+	AgentPrompt string
 
 	ArtifactPath string
 	LatestPath   string
@@ -107,9 +107,9 @@ func (s *Service) Generate(req GenerateRequest) (GenerateResult, error) {
 	warnings = append(warnings, buildWarnings...)
 
 	report := contractprompt.PromptReportV1{
-		GeneratedAt: contractartifact.FormatRFC3339NanoUTC(now),
-		RootPath:    req.RootPath,
-		Profile:     profile,
+		GeneratedAt:   contractartifact.FormatRFC3339NanoUTC(now),
+		RootPath:      req.RootPath,
+		Profile:       profile,
 		FilesScanned:  len(files),
 		FilesIncluded: len(inputs),
 		TotalBytes:    totalBytes,
@@ -130,14 +130,14 @@ func (s *Service) Generate(req GenerateRequest) (GenerateResult, error) {
 	}, "\n")
 
 	meta := contractartifact.ArtifactMetaV1{
-		Tool:        "megaprompt",
-		Contract:    "v1",
-		GeneratedAt: contractartifact.FormatRFC3339NanoUTC(now),
-		RootPath:    req.RootPath,
-		Args:        nil,
-		NetEnabled:  false,
+		Tool:         "megaprompt",
+		Contract:     "v1",
+		GeneratedAt:  contractartifact.FormatRFC3339NanoUTC(now),
+		RootPath:     req.RootPath,
+		Args:         nil,
+		NetEnabled:   false,
 		AllowDomains: nil,
-		Warnings:    warnings,
+		Warnings:     warnings,
 	}
 
 	envelope := contractartifact.ArtifactEnvelopeV1{

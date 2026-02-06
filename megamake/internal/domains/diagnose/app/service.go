@@ -11,9 +11,9 @@ import (
 	contractartifact "github.com/megamake/megamake/internal/contracts/v1/artifact"
 	contract "github.com/megamake/megamake/internal/contracts/v1/diagnose"
 	project "github.com/megamake/megamake/internal/contracts/v1/project"
-	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	"github.com/megamake/megamake/internal/domains/diagnose/domain"
 	"github.com/megamake/megamake/internal/domains/diagnose/ports"
+	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	"github.com/megamake/megamake/internal/platform/clock"
 )
 

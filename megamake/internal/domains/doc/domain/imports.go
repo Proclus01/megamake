@@ -9,6 +9,20 @@ import (
 	contractdoc "github.com/megamake/megamake/internal/contracts/v1/doc"
 )
 
+// importEdge is a stable, file-scope edge type for import graph rendering.
+// (Do not re-declare a same-shaped type inside BuildImportGraph; Go treats them as distinct named types.)
+type importEdge struct {
+	from       string
+	to         string
+	isInternal bool
+}
+
+// importTarget is the per-source target edge used for rendering and de-duping.
+type importTarget struct {
+	to         string
+	isInternal bool
+}
+
 // BuildImportGraph parses imports and returns:
 // - imports: a flat list of imports
 // - asciiGraph: a human-friendly import graph grouped by source file
@@ -23,13 +37,7 @@ func BuildImportGraph(relPaths []string, fileContents map[string]string) (import
 		exists[p] = true
 	}
 
-	type edge struct {
-		from       string
-		to         string
-		isInternal bool
-	}
-
-	var edges []edge
+	var edges []importEdge
 
 	for _, rel := range relPaths {
 		content, ok := fileContents[rel]
@@ -62,7 +70,7 @@ func BuildImportGraph(relPaths []string, fileContents map[string]string) (import
 			} else {
 				externalCounts[raw] = externalCounts[raw] + 1
 			}
-			edges = append(edges, edge{from: rel, to: target, isInternal: isInternal})
+			edges = append(edges, importEdge{from: rel, to: target, isInternal: isInternal})
 		}
 	}
 
@@ -319,20 +327,10 @@ func resolveRelative(fromRel string, raw string, exists map[string]bool) string 
 	return ""
 }
 
-type edge struct {
-	from       string
-	to         string
-	isInternal bool
-}
-
-func renderASCII(edges []edge) string {
-	type tgt struct {
-		to         string
-		isInternal bool
-	}
-	by := map[string][]tgt{}
+func renderASCII(edges []importEdge) string {
+	by := map[string][]importTarget{}
 	for _, e := range edges {
-		by[e.from] = append(by[e.from], tgt{to: e.to, isInternal: e.isInternal})
+		by[e.from] = append(by[e.from], importTarget{to: e.to, isInternal: e.isInternal})
 	}
 
 	sources := make([]string, 0, len(by))
@@ -356,18 +354,9 @@ func renderASCII(edges []edge) string {
 	return strings.Join(lines, "\n")
 }
 
-func uniqueTargets(targets []struct {
-	to         string
-	isInternal bool
-}) []struct {
-	to         string
-	isInternal bool
-} {
+func uniqueTargets(targets []importTarget) []importTarget {
 	seen := map[string]bool{}
-	var out []struct {
-		to         string
-		isInternal bool
-	}
+	var out []importTarget
 	for _, t := range targets {
 		key := t.to
 		if t.isInternal {

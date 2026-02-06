@@ -62,6 +62,12 @@ func Run(argv []string) int {
 	global.Usage = func() { writeRootHelp(stderr) }
 
 	if err := global.Parse(argv[1:]); err != nil {
+		if err == flag.ErrHelp {
+			// The flag package already triggered Usage output.
+			// Treat help as a successful exit.
+			return exitOK
+		}
+
 		writeRootHelp(stderr)
 		log.Error(fmt.Sprintf("failed to parse global flags: %v", err))
 		return exitUsage
@@ -96,6 +102,8 @@ func Run(argv []string) int {
 	case "secure", "patch", "make":
 		log.Warn(cmd + ": not implemented yet")
 		return exitUsage
+	case "chat":
+		return runChat(ctr, pol, artifactDir, args, stdout, stderr)
 	default:
 		log.Error("unknown command: " + cmd)
 		writeRootHelp(stderr)
@@ -746,6 +754,7 @@ Commands:
   doc get <uri>...
   diagnose [path]
   test [path]
+  chat <subcommand>
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }

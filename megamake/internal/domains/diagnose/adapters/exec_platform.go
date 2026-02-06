@@ -3,8 +3,8 @@ package adapters
 import (
 	"time"
 
-	plat "github.com/megamake/megamake/internal/platform/exec"
 	"github.com/megamake/megamake/internal/domains/diagnose/ports"
+	plat "github.com/megamake/megamake/internal/platform/exec"
 )
 
 type PlatformExec struct{}

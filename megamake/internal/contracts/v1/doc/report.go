@@ -15,7 +15,7 @@ const (
 )
 
 type DocImportV1 struct {
-	File         string `json:"file"`     // POSIX relpath
+	File         string `json:"file"` // POSIX relpath
 	Language     string `json:"language"`
 	Raw          string `json:"raw"`
 	IsInternal   bool   `json:"isInternal"`
@@ -31,19 +31,19 @@ type FetchedDocV1 struct {
 // DocReportV1 is the contract for MegaDoc outputs.
 // It mirrors the Swift report shape but uses stable POSIX relpaths for internal references.
 type DocReportV1 struct {
-	GeneratedAt           string         `json:"generatedAt"` // RFC3339Nano UTC
-	Mode                  DocModeV1      `json:"mode"`
-	RootPath              string         `json:"rootPath"`
-	Languages             []string       `json:"languages"`
-	DirectoryTree         string         `json:"directoryTree"`
-	ImportGraph           string         `json:"importGraph"`
-	Imports               []DocImportV1  `json:"imports"`
-	ExternalDependencies  map[string]int `json:"externalDependencies"`
-	PurposeSummary        string         `json:"purposeSummary"`
-	FetchedDocs           []FetchedDocV1 `json:"fetchedDocs"`
-	UMLASCII              string         `json:"umlAscii,omitempty"`
-	UMLPlantUML           string         `json:"umlPlantUML,omitempty"`
-	Warnings              []string       `json:"warnings,omitempty"`
+	GeneratedAt          string         `json:"generatedAt"` // RFC3339Nano UTC
+	Mode                 DocModeV1      `json:"mode"`
+	RootPath             string         `json:"rootPath"`
+	Languages            []string       `json:"languages"`
+	DirectoryTree        string         `json:"directoryTree"`
+	ImportGraph          string         `json:"importGraph"`
+	Imports              []DocImportV1  `json:"imports"`
+	ExternalDependencies map[string]int `json:"externalDependencies"`
+	PurposeSummary       string         `json:"purposeSummary"`
+	FetchedDocs          []FetchedDocV1 `json:"fetchedDocs"`
+	UMLASCII             string         `json:"umlAscii,omitempty"`
+	UMLPlantUML          string         `json:"umlPlantUML,omitempty"`
+	Warnings             []string       `json:"warnings,omitempty"`
 }
 
 // ToXML renders the report as pseudo-XML for stdout.

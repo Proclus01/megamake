@@ -10,11 +10,11 @@ import (
 type TestLevelV1 string
 
 const (
-	LevelSmoke      TestLevelV1 = "smoke"
-	LevelUnit       TestLevelV1 = "unit"
+	LevelSmoke       TestLevelV1 = "smoke"
+	LevelUnit        TestLevelV1 = "unit"
 	LevelIntegration TestLevelV1 = "integration"
-	LevelE2E        TestLevelV1 = "e2e"
-	LevelRegression TestLevelV1 = "regression"
+	LevelE2E         TestLevelV1 = "e2e"
+	LevelRegression  TestLevelV1 = "regression"
 )
 
 type LevelSetV1 struct {
@@ -110,7 +110,7 @@ type CoverageEvidenceV1 struct {
 }
 
 type CoverageV1 struct {
-	Flag     CoverageFlagV1        `json:"flag"`
+	Flag     CoverageFlagV1       `json:"flag"`
 	Status   string               `json:"status"` // DONE/PARTIAL/MISSING
 	Score    int                  `json:"score"`
 	Evidence []CoverageEvidenceV1 `json:"evidence,omitempty"`
@@ -118,16 +118,16 @@ type CoverageV1 struct {
 }
 
 type SubjectPlanV1 struct {
-	Subject   TestSubjectV1           `json:"subject"`
-	Scenarios []ScenarioSuggestionV1  `json:"scenarios,omitempty"`
-	Coverage  CoverageV1              `json:"coverage"`
+	Subject   TestSubjectV1          `json:"subject"`
+	Scenarios []ScenarioSuggestionV1 `json:"scenarios,omitempty"`
+	Coverage  CoverageV1             `json:"coverage"`
 }
 
 type LanguagePlanV1 struct {
-	Name          string          `json:"name"`
-	Frameworks    []string        `json:"frameworks,omitempty"`
-	Subjects      []SubjectPlanV1 `json:"subjects"`
-	TestFilesFound int            `json:"testFilesFound"`
+	Name           string          `json:"name"`
+	Frameworks     []string        `json:"frameworks,omitempty"`
+	Subjects       []SubjectPlanV1 `json:"subjects"`
+	TestFilesFound int             `json:"testFilesFound"`
 }
 
 type PlanSummaryV1 struct {
@@ -138,9 +138,9 @@ type PlanSummaryV1 struct {
 
 type TestPlanReportV1 struct {
 	Languages   []LanguagePlanV1 `json:"languages"`
-	GeneratedAt string          `json:"generatedAt"`
-	Summary     PlanSummaryV1   `json:"summary"`
-	Warnings    []string        `json:"warnings,omitempty"`
+	GeneratedAt string           `json:"generatedAt"`
+	Summary     PlanSummaryV1    `json:"summary"`
+	Warnings    []string         `json:"warnings,omitempty"`
 }
 
 // ToXML renders a pseudo-XML test plan similar to your Swift output style.

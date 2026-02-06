@@ -9,8 +9,8 @@ import (
 	"time"
 
 	contractartifact "github.com/megamake/megamake/internal/contracts/v1/artifact"
-	contract "github.com/megamake/megamake/internal/contracts/v1/testplan"
 	project "github.com/megamake/megamake/internal/contracts/v1/project"
+	contract "github.com/megamake/megamake/internal/contracts/v1/testplan"
 	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	"github.com/megamake/megamake/internal/domains/testplan/domain"
 	"github.com/megamake/megamake/internal/domains/testplan/ports"
@@ -31,17 +31,17 @@ type RegressionMode struct {
 }
 
 type BuildRequest struct {
-	RootPath       string
-	ArtifactDir    string
-	Force          bool
+	RootPath    string
+	ArtifactDir string
+	Force       bool
 
-	LimitSubjects  int
-	LevelsCSV      string
+	LimitSubjects int
+	LevelsCSV     string
 
-	MaxFileBytes   int64
+	MaxFileBytes    int64
 	MaxAnalyzeBytes int64
-	IgnoreNames    []string
-	IgnoreGlobs    []string
+	IgnoreNames     []string
+	IgnoreGlobs     []string
 
 	Regression RegressionMode
 
@@ -282,7 +282,7 @@ func (s *Service) Build(req BuildRequest) (BuildResult, error) {
 	}
 
 	report := contract.TestPlanReportV1{
-		Languages: languagePlans,
+		Languages:   languagePlans,
 		GeneratedAt: contractartifact.FormatRFC3339NanoUTC(now),
 		Summary: contract.PlanSummaryV1{
 			TotalLanguages: len(languagePlans),

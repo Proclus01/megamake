@@ -21,8 +21,8 @@ func (c OSClipboard) Copy(text string) (bool, error) {
 	}
 
 	candidates := []candidate{
-		{cmd: "pbcopy", args: nil},                         // macOS
-		{cmd: "wl-copy", args: nil},                        // Wayland
+		{cmd: "pbcopy", args: nil},                                // macOS
+		{cmd: "wl-copy", args: nil},                               // Wayland
 		{cmd: "xclip", args: []string{"-selection", "clipboard"}}, // X11
 		{cmd: "xsel", args: []string{"--clipboard", "--input"}},   // X11
 	}

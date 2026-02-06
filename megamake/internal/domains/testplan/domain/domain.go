@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	contract "github.com/megamake/megamake/internal/contracts/v1/testplan"
 	project "github.com/megamake/megamake/internal/contracts/v1/project"
+	contract "github.com/megamake/megamake/internal/contracts/v1/testplan"
 )
 
 // -------------------------
@@ -135,18 +135,18 @@ func analyzeJS(rel string, content string, lang string) []contract.TestSubjectV1
 		sig := "function " + name + "(" + m[2] + ")"
 		exported := strings.Contains(content, "export function "+name) || strings.Contains(content, "export default function "+name)
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  lang,
-			Name:      name,
-			Path:      rel,
-			Signature: sig,
-			Exported:  exported,
-			Params:    parseParamsColon(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    lang,
+			Name:        name,
+			Path:        rel,
+			Signature:   sig,
+			Exported:    exported,
+			Params:      parseParamsColon(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -155,18 +155,18 @@ func analyzeJS(rel string, content string, lang string) []contract.TestSubjectV1
 	for _, m := range arrowRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  lang,
-			Name:      name,
-			Path:      rel,
-			Signature: "const " + name + " = (" + m[2] + ") =>",
-			Exported:  true,
-			Params:    parseParamsColon(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    lang,
+			Name:        name,
+			Path:        rel,
+			Signature:   "const " + name + " = (" + m[2] + ") =>",
+			Exported:    true,
+			Params:      parseParamsColon(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -175,17 +175,17 @@ func analyzeJS(rel string, content string, lang string) []contract.TestSubjectV1
 		name := m[1]
 		exported := strings.Contains(content, "export class "+name) || strings.Contains(content, "export default class "+name)
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#class:" + name,
-			Kind:      contract.KindClass,
-			Language:  lang,
-			Name:      name,
-			Path:      rel,
-			Signature: "class " + name,
-			Exported:  exported,
-			RiskScore: risk,
+			ID:          rel + "#class:" + name,
+			Kind:        contract.KindClass,
+			Language:    lang,
+			Name:        name,
+			Path:        rel,
+			Signature:   "class " + name,
+			Exported:    exported,
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -194,17 +194,17 @@ func analyzeJS(rel string, content string, lang string) []contract.TestSubjectV1
 		method := strings.ToUpper(m[2])
 		path := m[3]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  lang,
-			Name:      method + " " + path,
-			Path:      rel,
-			Signature: "",
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    lang,
+			Name:        method + " " + path,
+			Path:        rel,
+			Signature:   "",
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -221,18 +221,18 @@ func analyzePython(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range fnRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  "python",
-			Name:      name,
-			Path:      rel,
-			Signature: "def " + name + "(" + m[2] + "):",
-			Exported:  !strings.HasPrefix(name, "_"),
-			Params:    parseParamsPython(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    "python",
+			Name:        name,
+			Path:        rel,
+			Signature:   "def " + name + "(" + m[2] + "):",
+			Exported:    !strings.HasPrefix(name, "_"),
+			Params:      parseParamsPython(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -240,17 +240,17 @@ func analyzePython(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range clsRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#class:" + name,
-			Kind:      contract.KindClass,
-			Language:  "python",
-			Name:      name,
-			Path:      rel,
-			Signature: "class " + name,
-			Exported:  true,
-			RiskScore: risk,
+			ID:          rel + "#class:" + name,
+			Kind:        contract.KindClass,
+			Language:    "python",
+			Name:        name,
+			Path:        rel,
+			Signature:   "class " + name,
+			Exported:    true,
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -259,16 +259,16 @@ func analyzePython(rel string, content string) []contract.TestSubjectV1 {
 		method := strings.ToUpper(m[1])
 		path := m[2]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "python",
-			Name:      method + " " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "python",
+			Name:        method + " " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -285,18 +285,18 @@ func analyzeGo(rel string, content string) []contract.TestSubjectV1 {
 		name := m[1]
 		exported := len(name) > 0 && strings.ToUpper(name[:1]) == name[:1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  "go",
-			Name:      name,
-			Path:      rel,
-			Signature: "func " + name + "(" + m[2] + ")",
-			Exported:  exported,
-			Params:    parseParamsGo(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    "go",
+			Name:        name,
+			Path:        rel,
+			Signature:   "func " + name + "(" + m[2] + ")",
+			Exported:    exported,
+			Params:      parseParamsGo(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -305,16 +305,16 @@ func analyzeGo(rel string, content string) []contract.TestSubjectV1 {
 		method := strings.ToUpper(m[1])
 		path := m[2]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "go",
-			Name:      method + " " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "go",
+			Name:        method + " " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -322,16 +322,16 @@ func analyzeGo(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range handleRe.FindAllStringSubmatch(content, -1) {
 		path := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:ANY " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "go",
-			Name:      "ANY " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:ANY " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "go",
+			Name:        "ANY " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": "ANY", "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": "ANY", "path": path},
 		})
 	}
 
@@ -347,18 +347,18 @@ func analyzeRust(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range fnRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  "rust",
-			Name:      name,
-			Path:      rel,
-			Signature: "pub fn " + name + "(" + m[2] + ")",
-			Exported:  true,
-			Params:    parseParamsRust(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    "rust",
+			Name:        name,
+			Path:        rel,
+			Signature:   "pub fn " + name + "(" + m[2] + ")",
+			Exported:    true,
+			Params:      parseParamsRust(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -367,16 +367,16 @@ func analyzeRust(rel string, content string) []contract.TestSubjectV1 {
 		method := strings.ToUpper(m[1])
 		path := m[2]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "rust",
-			Name:      method + " " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "rust",
+			Name:        method + " " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -392,18 +392,18 @@ func analyzeSwift(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range fnRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  "swift",
-			Name:      name,
-			Path:      rel,
-			Signature: "func " + name + "(" + m[2] + ")",
-			Exported:  true,
-			Params:    parseParamsSwift(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    "swift",
+			Name:        name,
+			Path:        rel,
+			Signature:   "func " + name + "(" + m[2] + ")",
+			Exported:    true,
+			Params:      parseParamsSwift(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -411,17 +411,17 @@ func analyzeSwift(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range typeRe.FindAllStringSubmatch(content, -1) {
 		name := m[2]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#class:" + name,
-			Kind:      contract.KindClass,
-			Language:  "swift",
-			Name:      name,
-			Path:      rel,
-			Signature: m[1] + " " + name,
-			Exported:  true,
-			RiskScore: risk,
+			ID:          rel + "#class:" + name,
+			Kind:        contract.KindClass,
+			Language:    "swift",
+			Name:        name,
+			Path:        rel,
+			Signature:   m[1] + " " + name,
+			Exported:    true,
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -429,17 +429,17 @@ func analyzeSwift(rel string, content string) []contract.TestSubjectV1 {
 	initRe := regexp.MustCompile(`(?m)^\s*(?:public|open|internal|fileprivate|private)?\s*init\s*\(([^)]*)\)`)
 	for range initRe.FindAllStringSubmatch(content, -1) {
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#init",
-			Kind:      contract.KindFunction,
-			Language:  "swift",
-			Name:      "init",
-			Path:      rel,
-			Signature: "init(...)",
-			Exported:  true,
-			RiskScore: risk,
+			ID:          rel + "#init",
+			Kind:        contract.KindFunction,
+			Language:    "swift",
+			Name:        "init",
+			Path:        rel,
+			Signature:   "init(...)",
+			Exported:    true,
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 		break
 	}
@@ -456,17 +456,17 @@ func analyzeJava(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range clsRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#class:" + name,
-			Kind:      contract.KindClass,
-			Language:  "java",
-			Name:      name,
-			Path:      rel,
-			Signature: "public class " + name,
-			Exported:  true,
-			RiskScore: risk,
+			ID:          rel + "#class:" + name,
+			Kind:        contract.KindClass,
+			Language:    "java",
+			Name:        name,
+			Path:        rel,
+			Signature:   "public class " + name,
+			Exported:    true,
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -474,18 +474,18 @@ func analyzeJava(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range fnRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  "java",
-			Name:      name,
-			Path:      rel,
-			Signature: "method " + name + "(" + m[2] + ")",
-			Exported:  true,
-			Params:    parseParamsJava(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    "java",
+			Name:        name,
+			Path:        rel,
+			Signature:   "method " + name + "(" + m[2] + ")",
+			Exported:    true,
+			Params:      parseParamsJava(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -494,16 +494,16 @@ func analyzeJava(rel string, content string) []contract.TestSubjectV1 {
 		path := m[1]
 		method := detectSpringMethod(m[0])
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "java",
-			Name:      method + " " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "java",
+			Name:        method + " " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -519,17 +519,17 @@ func analyzeKotlin(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range typeRe.FindAllStringSubmatch(content, -1) {
 		name := m[2]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#class:" + name,
-			Kind:      contract.KindClass,
-			Language:  "kotlin",
-			Name:      name,
-			Path:      rel,
-			Signature: m[1] + " " + name,
-			Exported:  true,
-			RiskScore: risk,
+			ID:          rel + "#class:" + name,
+			Kind:        contract.KindClass,
+			Language:    "kotlin",
+			Name:        name,
+			Path:        rel,
+			Signature:   m[1] + " " + name,
+			Exported:    true,
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -537,18 +537,18 @@ func analyzeKotlin(rel string, content string) []contract.TestSubjectV1 {
 	for _, m := range fnRe.FindAllStringSubmatch(content, -1) {
 		name := m[1]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#fn:" + name,
-			Kind:      contract.KindFunction,
-			Language:  "kotlin",
-			Name:      name,
-			Path:      rel,
-			Signature: "fun " + name + "(" + m[2] + ")",
-			Exported:  true,
-			Params:    parseParamsKt(m[2]),
-			RiskScore: risk,
+			ID:          rel + "#fn:" + name,
+			Kind:        contract.KindFunction,
+			Language:    "kotlin",
+			Name:        name,
+			Path:        rel,
+			Signature:   "fun " + name + "(" + m[2] + ")",
+			Exported:    true,
+			Params:      parseParamsKt(m[2]),
+			RiskScore:   risk,
 			RiskFactors: factors,
-			IO:        io,
-			Meta:      map[string]string{},
+			IO:          io,
+			Meta:        map[string]string{},
 		})
 	}
 
@@ -557,16 +557,16 @@ func analyzeKotlin(rel string, content string) []contract.TestSubjectV1 {
 		path := m[1]
 		method := detectSpringMethod(m[0])
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "kotlin",
-			Name:      method + " " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "kotlin",
+			Name:        method + " " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -575,16 +575,16 @@ func analyzeKotlin(rel string, content string) []contract.TestSubjectV1 {
 		method := strings.ToUpper(m[1])
 		path := m[2]
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#endpoint:" + method + " " + path,
-			Kind:      contract.KindEndpoint,
-			Language:  "kotlin",
-			Name:      method + " " + path,
-			Path:      rel,
-			Exported:  true,
-			RiskScore: maxInt(risk, 4),
+			ID:          rel + "#endpoint:" + method + " " + path,
+			Kind:        contract.KindEndpoint,
+			Language:    "kotlin",
+			Name:        method + " " + path,
+			Path:        rel,
+			Exported:    true,
+			RiskScore:   maxInt(risk, 4),
 			RiskFactors: append([]string{"http route"}, factors...),
-			IO:        io,
-			Meta:      map[string]string{"method": method, "path": path},
+			IO:          io,
+			Meta:        map[string]string{"method": method, "path": path},
 		})
 	}
 
@@ -602,17 +602,17 @@ func analyzeLean(rel string, content string) []contract.TestSubjectV1 {
 			k = contract.KindClass
 		}
 		out = append(out, contract.TestSubjectV1{
-			ID:        rel + "#lean:" + kindTok + ":" + name,
-			Kind:      k,
-			Language:  "lean",
-			Name:      name,
-			Path:      rel,
-			Signature: kindTok + " " + name,
-			Exported:  true,
-			RiskScore: 2,
+			ID:          rel + "#lean:" + kindTok + ":" + name,
+			Kind:        k,
+			Language:    "lean",
+			Name:        name,
+			Path:        rel,
+			Signature:   kindTok + " " + name,
+			Exported:    true,
+			RiskScore:   2,
 			RiskFactors: []string{"lean declaration: " + kindTok},
-			IO:        contract.IOCapabilitiesV1{},
-			Meta:      map[string]string{"lean_decl": kindTok},
+			IO:          contract.IOCapabilitiesV1{},
+			Meta:        map[string]string{"lean_decl": kindTok},
 		})
 	}
 	return out

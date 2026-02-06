@@ -2,12 +2,12 @@ package domain
 
 // IncludeRules defines what the repo scanner includes/excludes.
 type IncludeRules struct {
-	AllowedExts        map[string]bool
-	ForceIncludeNames  map[string]bool
-	ForceIncludeGlobs  []string
-	PruneDirs          map[string]bool
-	ExcludeNames       map[string]bool
-	ExcludeExts        map[string]bool
+	AllowedExts       map[string]bool
+	ForceIncludeNames map[string]bool
+	ForceIncludeGlobs []string
+	PruneDirs         map[string]bool
+	ExcludeNames      map[string]bool
+	ExcludeExts       map[string]bool
 }
 
 // BuildRules returns language-aware include rules.
@@ -72,31 +72,31 @@ func BuildRules(languages map[string]bool) IncludeRules {
 	}
 
 	forceNames := map[string]bool{
-		"package.json": true,
-		"tsconfig.json": true,
-		"jsconfig.json": true,
-		"go.mod": true,
-		"cargo.toml": true,
-		"pom.xml": true,
-		"build.gradle": true,
-		"build.gradle.kts": true,
-		"settings.gradle": true,
+		"package.json":        true,
+		"tsconfig.json":       true,
+		"jsconfig.json":       true,
+		"go.mod":              true,
+		"cargo.toml":          true,
+		"pom.xml":             true,
+		"build.gradle":        true,
+		"build.gradle.kts":    true,
+		"settings.gradle":     true,
 		"settings.gradle.kts": true,
-		"pyproject.toml": true,
-		"requirements.txt": true,
-		"pipfile": true,
-		"setup.py": true,
-		"setup.cfg": true,
-		"tox.ini": true,
-		"dockerfile": true,
-		"docker-compose.yml": true,
+		"pyproject.toml":      true,
+		"requirements.txt":    true,
+		"pipfile":             true,
+		"setup.py":            true,
+		"setup.cfg":           true,
+		"tox.ini":             true,
+		"dockerfile":          true,
+		"docker-compose.yml":  true,
 		"docker-compose.yaml": true,
-		"makefile": true,
-		"cmakelists.txt": true,
-		"lakefile.lean": true,
-		"lean-toolchain": true,
-		"latexmkrc": true,
-		".gitattributes": true,
+		"makefile":            true,
+		"cmakelists.txt":      true,
+		"lakefile.lean":       true,
+		"lean-toolchain":      true,
+		"latexmkrc":           true,
+		".gitattributes":      true,
 	}
 
 	forceGlobs := []string{
@@ -126,7 +126,7 @@ func BuildRules(languages map[string]bool) IncludeRules {
 		".docusaurus": true, ".vitepress": true, ".astro": true,
 		".yarn": true, ".pnpm-store": true,
 		".history": true,
-		".direnv": true,
+		".direnv":  true,
 	}
 
 	// Prefer TypeScript over JS/JSX when TypeScript present.

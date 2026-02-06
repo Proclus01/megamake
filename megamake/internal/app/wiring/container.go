@@ -1,26 +1,29 @@
 package wiring
 
 import (
-	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 	repoadapters "github.com/megamake/megamake/internal/domains/repo/adapters"
+	repoapi "github.com/megamake/megamake/internal/domains/repo/api"
 
-	promptapi "github.com/megamake/megamake/internal/domains/prompt/api"
 	promptadapters "github.com/megamake/megamake/internal/domains/prompt/adapters"
+	promptapi "github.com/megamake/megamake/internal/domains/prompt/api"
 
-	docapi "github.com/megamake/megamake/internal/domains/doc/api"
 	docadapters "github.com/megamake/megamake/internal/domains/doc/adapters"
+	docapi "github.com/megamake/megamake/internal/domains/doc/api"
 
-	diagapi "github.com/megamake/megamake/internal/domains/diagnose/api"
 	diagadapters "github.com/megamake/megamake/internal/domains/diagnose/adapters"
+	diagapi "github.com/megamake/megamake/internal/domains/diagnose/api"
 
-	tpapi "github.com/megamake/megamake/internal/domains/testplan/api"
 	tpadapters "github.com/megamake/megamake/internal/domains/testplan/adapters"
+	tpapi "github.com/megamake/megamake/internal/domains/testplan/api"
+
+	chatadapters "github.com/megamake/megamake/internal/domains/chat/adapters"
+	chatapi "github.com/megamake/megamake/internal/domains/chat/api"
 
 	artifactwriter "github.com/megamake/megamake/internal/platform/artifact"
 	"github.com/megamake/megamake/internal/platform/clock"
 )
 
-// Container is the in-process DI container for patch0..patch6.
+// Container is the in-process DI container for patch0..patch6 (+ chat).
 type Container struct {
 	Clock          clock.Clock
 	ArtifactWriter artifactwriter.Writer
@@ -30,6 +33,8 @@ type Container struct {
 	Doc      docapi.API
 	Diagnose diagapi.API
 	TestPlan tpapi.API
+
+	Chat chatapi.API
 }
 
 func New() Container {
@@ -87,6 +92,20 @@ func New() Container {
 		Git:            tpGit,
 	})
 
+	// Chat
+	chatFS := chatadapters.NewFSAdapters()
+	chat := chatapi.New(chatapi.Dependencies{
+		Clock:        clk,
+		Store:        chatFS.Store,
+		Settings:     chatFS.Settings,
+		Env:          chatFS.Env,
+		Jobs:         chatFS.Jobs,
+		TokenCounter: chatFS.TokenCounter,
+		Providers:    chatFS.Providers,
+		ModelCache:   chatFS.ModelCache,
+		RunSettings:  chatFS.RunSettings,
+	})
+
 	return Container{
 		Clock:          clk,
 		ArtifactWriter: aw,
@@ -95,5 +114,6 @@ func New() Container {
 		Doc:            doc,
 		Diagnose:       diagnose,
 		TestPlan:       testPlan,
+		Chat:           chat,
 	}
 }

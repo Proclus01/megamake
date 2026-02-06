@@ -89,19 +89,19 @@ func (d OSDetector) Detect(rootPath string) (project.ProjectProfileV1, error) {
 	sourceExtToLang := map[string]string{
 		".ts": "typescript", ".tsx": "typescript",
 		".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
-		".py": "python",
-		".go": "go",
-		".rs": "rust",
+		".py":   "python",
+		".go":   "go",
+		".rs":   "rust",
 		".java": "java",
-		".kt": "kotlin", ".kts": "kotlin",
+		".kt":   "kotlin", ".kts": "kotlin",
 		".c": "cpp", ".cc": "cpp", ".cpp": "cpp", ".cxx": "cpp", ".h": "cpp", ".hpp": "cpp", ".hh": "cpp",
-		".cs": "csharp",
-		".php": "php",
-		".rb": "ruby",
+		".cs":    "csharp",
+		".php":   "php",
+		".rb":    "ruby",
 		".swift": "swift",
-		".tf": "terraform",
-		".lean": "lean",
-		".tex": "latex", ".cls": "latex", ".sty": "latex", ".bib": "latex",
+		".tf":    "terraform",
+		".lean":  "lean",
+		".tex":   "latex", ".cls": "latex", ".sty": "latex", ".bib": "latex",
 	}
 
 	sourceFileCount := 0
@@ -117,7 +117,7 @@ func (d OSDetector) Detect(rootPath string) (project.ProjectProfileV1, error) {
 				return fs.SkipDir
 			}
 			// Reuse pruning knowledge to avoid expensive traversals.
-				// This is conservative: it improves performance and matches later scanner
+			// This is conservative: it improves performance and matches later scanner
 			// behavior for common build/vendor/cache dirs.
 			rules := domain.BuildRules(languageSet)
 			low := strings.ToLower(name)
