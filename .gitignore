@@ -33,3 +33,6 @@ go.work.sum
 
 # Ignore the patches directory at the repo root
 /patches/
+
+# Ignore user-defined artifacts (chats, env, etc.)
+/megamake/artifacts/
