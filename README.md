@@ -376,4 +376,6 @@ Ensure you have a dotenv file at `<artifactDir>/MEGACHAT/.env` (or use `--env-fi
 
 ## License
 
-(TODO: add license information)
+Megamake is licensed under the **GNU Affero General Public License v3.0 or later** (**AGPL-3.0-or-later**).
+
+If you modify Megamake and run it as a network service (for example, using `megamake chat serve`), the AGPL requires you to offer the corresponding source code of your modified version to the users of that service.
