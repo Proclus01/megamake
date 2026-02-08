@@ -11,187 +11,387 @@ At a high level, Megamake helps you:
 
 ---
 
-## Quickstart (recommended install)
+## Repository layout (local-first)
 
-### Canonical artifact directory (recommended)
-Megamake writes artifacts to an artifact directory you choose. A good default is:
+This repo is intentionally **local-directory-first**:
 
-- macOS/Linux: `~/.megamake/artifacts`
-- Windows: `%USERPROFILE%\.megamake\artifacts`
+- The Go module and source live in: `./megamake/`
+- The built binary is expected at: `./megamake/megamake` (in the module root)
+- **Chat artifacts** (runs, `.env`, etc.) are expected under: `./megamake/artifacts/MEGACHAT/`
 
-You can still override per command with `--artifact-dir ./artifacts` (project-local), but having a canonical default is convenient.
+Example (what you should see after setup):
+
+```text
+megamake/
+  LICENSE
+  README.md
+  megamake/
+    megamake                 <-- compiled binary (this is where it goes)
+    go.mod
+    cmd/
+    internal/
+    artifacts/
+      MEGACHAT/
+        .env
+        runs/
+      MEGACHAT_latest.txt
+```
+
+No `~/.local/bin`, no global install, no `./bin/` directory required.
 
 ---
 
-## Install / Build
+## Requirements
 
-Megamake’s CLI entrypoint is:
+- **Go 1.22+**
 
-- `./cmd/megamake`
+Optional toolchains (used by some commands like `diagnose`):
+- Node / npx / tsc / eslint (JS/TS)
+- Python
+- Rust / cargo
+- Swift
+- Java / mvn / gradle
+- Lean / lake
 
-### Option A (recommended): build a local binary and add a wrapper that always sets `--artifact-dir`
+Megamake will skip tools that aren’t installed and record warnings in output artifacts.
 
-This gives you the ergonomic command:
+---
+
+## Build (local directory install)
+
+### macOS / Linux
+
+From the repository root:
+
+```sh
+cd megamake
+go test ./...
+go build -o ./megamake ./cmd/megamake
+./megamake --help
+```
+
+### Windows (PowerShell)
+
+From the repository root:
+
+```powershell
+cd megamake
+go test ./...
+go build -o .\megamake.exe .\cmd\megamake
+.\megamake.exe --help
+```
+
+---
+
+## Where artifacts are written (important)
+
+Megamake has **two artifact behaviors**:
+
+### A) Local tools (prompt/doc/diagnose/test) — write to where you invoke the command
+
+These commands write artifacts to the **directory you run them from** (“invocation directory”):
+
+- `prompt`
+- `doc create`
+- `doc get`
+- `diagnose`
+- `test`
+
+Example: if you run `megamake prompt .` from `/projects/MyApp`, your artifact files are written into `/projects/MyApp/`:
+
+- `MEGAPROMPT_YYYYMMDD_HHMMSSZ.txt`
+- `MEGAPROMPT_latest.txt`
+
+Notes:
+- These commands **ignore** the global `--artifact-dir` flag by design.
+- They also automatically ignore local artifacts folders (if present in the project being scanned):
+  - `megamake/artifacts/**`
+  - `artifacts/**`
+
+This prevents recursive inclusion of generated state.
+
+### B) Chat — uses `--artifact-dir` (repo-local recommended)
+
+Chat stores runs, settings, and `.env` under the configured artifact directory.
+
+Recommended (repo-local):
+
+- `./megamake/artifacts/MEGACHAT/...`
+
+---
+
+## Run (recommended workflow)
+
+### 1) Prompt (from the project you want to scan)
+
+From your target project directory:
 
 ```sh
 megamake prompt .
 ```
 
-without re-typing `--artifact-dir` every time.
+This writes:
+- `MEGAPROMPT_*.txt` and `MEGAPROMPT_latest.txt` into the **current directory**.
 
-#### macOS / Linux (zsh/bash)
-
-From the repo root (where `go.mod` is):
+Flag ordering:
+- Flags can appear **before or after** the path:
 
 ```sh
-# 1) Build to ~/.local/bin (no sudo)
-mkdir -p "$HOME/.local/bin" "$HOME/.megamake/artifacts" \
-  && go test ./... \
-  && go build -o "$HOME/.local/bin/megamake" ./cmd/megamake
+megamake prompt . --ignore build
+megamake prompt --ignore build .
+```
 
-# 2) Ensure ~/.local/bin is in PATH (zsh example)
-# (If you use bash, put this in ~/.bashrc instead)
-printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.zshrc"
+#### zsh glob note (important)
+If you pass glob patterns to `--ignore`, **quote them**:
 
-# 3) Add a wrapper function so `megamake ...` always uses the canonical artifact dir
-printf '\nexport MEGAMAKE_ARTIFACT_DIR="$HOME/.megamake/artifacts"\n' >> "$HOME/.zshrc"
-printf '\nmegamake(){ command megamake --artifact-dir "$MEGAMAKE_ARTIFACT_DIR" "$@"; }\n' >> "$HOME/.zshrc"
+```sh
+megamake prompt . --ignore 'docs/generated/**'
+```
 
-# 4) Reload shell config
-source "$HOME/.zshrc"
+Unquoted globs may be expanded by zsh before Megamake runs, or cause `zsh: no matches found`.
 
-# 5) Confirm
+---
+
+### 2) Documentation
+
+#### `doc create` (local repo analysis)
+
+From the target project directory:
+
+```sh
+megamake doc create .
+```
+
+Flags can appear before or after the path:
+
+```sh
+megamake doc create . --uml ascii,plantuml --tree-depth 6
+megamake doc create --uml ascii,plantuml --tree-depth 6 .
+```
+
+#### `doc get` (fetch mode)
+
+From anywhere:
+
+```sh
+megamake doc get ./README.md
+```
+
+HTTP(S) requires `--net`:
+
+```sh
+megamake --net doc get https://example.com
+megamake --net --allow-domain example.com doc get https://example.com/docs
+megamake --net --allow-domain example.com doc get --crawl-depth 2 https://example.com/docs
+```
+
+Flag ordering:
+- `doc get` flags can appear **before or after** URIs:
+
+```sh
+megamake doc get https://example.com/docs --crawl-depth 2
+megamake doc get --crawl-depth 2 https://example.com/docs
+```
+
+---
+
+### 3) Diagnose
+
+From the target project directory:
+
+```sh
+megamake diagnose .
+```
+
+---
+
+### 4) Test plan
+
+From the target project directory:
+
+```sh
+megamake test .
+```
+
+---
+
+## Convenience wrapper (recommended for working from ANY directory)
+
+Many developers keep the Megamake source repo checked out in one place, but want to run:
+
+```sh
+megamake prompt .
+```
+
+from **any** project directory.
+
+If you use a wrapper that `cd`s into the Megamake repo before running the tool, you must preserve the “caller directory” so `.` still means “the directory you invoked from”.
+
+Megamake supports this via:
+
+- `MEGAMAKE_CALLER_PWD` (set by your wrapper)
+
+---
+
+### macOS/Linux (zsh): add to `~/.zshrc`
+
+1) Build Megamake (once):
+
+```sh
+cd /path/to/your/checkout/megamake/megamake
+go build -o ./megamake ./cmd/megamake
+```
+
+2) Add this block to `~/.zshrc` (replace the placeholder path):
+
+```sh
+# --- megamake (repo-local wrapper; runs from any directory) ---
+export MEGAMAKE_HOME="/ABSOLUTE/PATH/TO/your/checkout/megamake/megamake"
+
+megamake() {
+  local caller="$PWD"
+
+  (
+    export MEGAMAKE_CALLER_PWD="$caller"
+    cd "$MEGAMAKE_HOME" || exit 1
+
+    if [[ ! -x ./megamake ]]; then
+      echo "megamake: binary not found or not executable at: $MEGAMAKE_HOME/megamake" >&2
+      echo "megamake: build it with: (cd \"$MEGAMAKE_HOME\" && go build -o ./megamake ./cmd/megamake)" >&2
+      exit 1
+    fi
+
+    # Chat should use repo-local artifacts. Local tools ignore --artifact-dir.
+    if [[ "$1" == "chat" ]]; then
+      ./megamake --artifact-dir ./artifacts "$@"
+    else
+      ./megamake "$@"
+    fi
+  )
+}
+# --- /megamake ---
+```
+
+3) Reload:
+
+```sh
+source ~/.zshrc
+```
+
+4) Test (from ANY project directory):
+
+```sh
 megamake --help
-megamake prompt . --help
+megamake prompt .
+megamake doc create .
+megamake diagnose .
+megamake test .
 ```
 
-Notes:
-- Using `command megamake` inside the function bypasses the function itself and executes the real binary.
-- If you don’t want a wrapper function, just call `megamake --artifact-dir "$HOME/.megamake/artifacts" ...`.
-
-#### Windows (PowerShell)
-
-From the repo root:
-
-```powershell
-# 1) Build to your Go bin dir
-go test ./...
-$bin = Join-Path $HOME "go\bin"
-New-Item -Force -ItemType Directory $bin | Out-Null
-go build -o (Join-Path $bin "megamake.exe") .\cmd\megamake
-
-# 2) Create canonical artifact dir
-$art = Join-Path $HOME ".megamake\artifacts"
-New-Item -Force -ItemType Directory $art | Out-Null
-
-# 3) Add a wrapper function to your PowerShell profile so `megamake ...` always uses the artifact dir
-# (creates the profile file if missing)
-if (!(Test-Path $PROFILE)) { New-Item -Force -ItemType File $PROFILE | Out-Null }
-
-Add-Content -Path $PROFILE -Value ""
-Add-Content -Path $PROFILE -Value ('$MEGAMAKE_EXE = "' + (Join-Path $bin "megamake.exe") + '"')
-Add-Content -Path $PROFILE -Value ('$MEGAMAKE_ARTIFACT_DIR = "' + $art + '"')
-Add-Content -Path $PROFILE -Value 'function megamake { param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args) & $MEGAMAKE_EXE --artifact-dir $MEGAMAKE_ARTIFACT_DIR @Args }'
-
-# 4) Reload profile
-. $PROFILE
-
-# 5) Confirm
-megamake --help
-```
-
-If `go\bin` is not on your PATH, add it via Windows Environment Variables (recommended) or call the executable directly.
-
----
-
-### Option B: `go install` (simple, but depends on PATH)
-From repo root:
-
-```sh
-go install ./cmd/megamake
-```
-
-This installs `megamake` to `$(go env GOBIN)` if set, otherwise `$(go env GOPATH)/bin`.
-
-You’ll still want:
-- to ensure that directory is on PATH, and
-- optionally add the wrapper function for `--artifact-dir`.
-
----
-
-## Compile / Verify Everything Builds
-
-```sh
-go test ./...
-```
-
-Even if you have no tests, `go test ./...` compiles all packages.
-
----
-
-## Formatting / Linting (Optional)
-
-```sh
-gofmt -w .
-golangci-lint run ./...   # if you use golangci-lint
-```
-
----
-
-## Usage
-
-### Global flags
-
-- `--artifact-dir <dir>`  
-  Directory where Megamake artifacts and pointer files are written.
-- `--net`  
-  Enable network access (deny-by-default otherwise).
-- `--allow-domain <domain>` (repeatable)  
-  Allowed domain when `--net` is set. If none provided, all domains are allowed when `--net` is set.
-
----
-
-## Commands (overview)
-
-- `prompt` — scan a repo and emit a `<context>` blob (pseudo-XML) containing source files.
-- `doc create` — generate a documentation report from a local repo.
-- `doc get` — fetch documentation from local paths or HTTP(S), with network gating.
-- `diagnose` — run best-effort diagnostics using local toolchains and generate a fix-oriented prompt.
-- `test` — build a structured test plan.
-- `chat` — local-first chat orchestration tool (CLI + server + UI).
-
----
-
-## Chat (CLI + Server + UI)
-
-Megamake Chat is stored under your artifact directory:
-
-- Runs: `<artifactDir>/MEGACHAT/runs/<run_name>/`
-- Default dotenv path (provider keys): `<artifactDir>/MEGACHAT/.env`
-
-### Start the chat server + UI
+And for chat (stores runs under `MEGAMAKE_HOME/artifacts/MEGACHAT/...`):
 
 ```sh
 megamake --net chat serve --listen 127.0.0.1:8082
 ```
 
-Open (in a browser):
+---
 
-```text
-http://127.0.0.1:8082/ui
+### Windows (PowerShell): add to your PowerShell profile
+
+1) Find your PowerShell profile path:
+
+```powershell
+$PROFILE
 ```
 
-Health:
+2) Edit it (creates it if missing):
 
-```text
-http://127.0.0.1:8082/health
+```powershell
+if (!(Test-Path $PROFILE)) { New-Item -Force -ItemType File $PROFILE | Out-Null }
+notepad $PROFILE
 ```
 
-### `.env` for provider keys
+3) Add this block (replace the placeholder path):
 
-Create:
+```powershell
+# --- megamake (repo-local wrapper; runs from any directory) ---
+$env:MEGAMAKE_HOME = "C:\ABSOLUTE\PATH\TO\your\checkout\megamake\megamake"
 
-- `<artifactDir>/MEGACHAT/.env`
+function megamake {
+  param(
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]] $Args
+  )
+
+  $caller = (Get-Location).Path
+
+  # Run in a child scope so we can safely cd
+  & {
+    $env:MEGAMAKE_CALLER_PWD = $caller
+
+    Set-Location $env:MEGAMAKE_HOME
+
+    $exe = Join-Path $env:MEGAMAKE_HOME "megamake.exe"
+    if (!(Test-Path $exe)) {
+      Write-Error "megamake: binary not found at: $exe"
+      Write-Error "megamake: build it with: (cd `"$env:MEGAMAKE_HOME`"; go build -o .\megamake.exe .\cmd\megamake)"
+      exit 1
+    }
+
+    if ($Args.Length -ge 1 -and $Args[0] -eq "chat") {
+      & $exe --artifact-dir ".\artifacts" @Args
+    } else {
+      & $exe @Args
+    }
+  }
+}
+# --- /megamake ---
+```
+
+4) Reload:
+
+```powershell
+. $PROFILE
+```
+
+5) Test (from any directory):
+
+```powershell
+megamake --help
+megamake prompt .
+megamake doc create .
+```
+
+---
+
+## Network policy (important)
+
+Megamake is **deny-by-default** for network access.
+
+Global flags:
+- `--net` enables network access
+- `--allow-domain <domain>` restricts allowed network domains (repeatable)
+
+Example:
+
+```sh
+megamake --net --allow-domain api.openai.com chat serve --listen 127.0.0.1:8082
+```
+
+---
+
+## Chat (CLI + Server + UI)
+
+Chat is stored under your chat artifact directory (recommended: repo-local `./megamake/artifacts/`):
+
+- Runs: `./megamake/artifacts/MEGACHAT/runs/<run_name>/`
+- Dotenv (provider keys): `./megamake/artifacts/MEGACHAT/.env`
+
+### Create `.env` for providers
+
+Create/edit:
+
+- `./megamake/artifacts/MEGACHAT/.env`
 
 Example:
 
@@ -203,46 +403,48 @@ OPENAI_API_KEY=sk-...
 # OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-After editing `.env`, **restart the server** so it loads the environment.
+If you change `.env`, **restart** the server so it reloads env vars.
 
-You can override the dotenv path when serving:
+### Start the chat server + UI
+
+From the module directory (`./megamake/` in this repo):
 
 ```sh
-megamake --net chat serve --env-file /path/to/.env --listen 127.0.0.1:8082
+./megamake --artifact-dir ./artifacts --net chat serve --listen 127.0.0.1:8082
 ```
 
-### Create/list/get runs (CLI)
+Open:
+
+- UI: `http://127.0.0.1:8082/ui`
+- Health: `http://127.0.0.1:8082/health`
+
+### Chat CLI basics
 
 ```sh
-megamake chat new --title "My Conversation"
-megamake chat list
-megamake chat get --run <run_name>
+./megamake --artifact-dir ./artifacts chat new --title "My Conversation"
+./megamake --artifact-dir ./artifacts chat list
+./megamake --artifact-dir ./artifacts chat get --run <run_name>
 ```
 
 ### Providers: verify + list models (CLI)
 
-These commands respect network policy:
-
-- network providers require `--net`
-- if you set `--allow-domain`, provider API hosts must be allowlisted
-
-Examples:
+These respect network policy:
 
 ```sh
 # Stub provider (no network)
-megamake chat verify --provider stub --json=false
-megamake chat models --provider stub --json=false
+./megamake --artifact-dir ./artifacts chat verify --provider stub --json=false
+./megamake --artifact-dir ./artifacts chat models --provider stub --json=false
 
 # OpenAI (requires --net and OPENAI_API_KEY)
-megamake --net chat verify --provider openai
-megamake --net chat models --provider openai --limit 50 --json=false
+./megamake --artifact-dir ./artifacts --net chat verify --provider openai
+./megamake --artifact-dir ./artifacts --net chat models --provider openai --limit 50 --json=false
 ```
 
-Model listing supports server-side caching controls:
+Model listing supports cache controls:
 
 ```sh
-megamake --net chat models --provider openai --no-cache
-megamake --net chat models --provider openai --cache-ttl-seconds 60
+./megamake --artifact-dir ./artifacts --net chat models --provider openai --no-cache
+./megamake --artifact-dir ./artifacts --net chat models --provider openai --cache-ttl-seconds 60
 ```
 
 ### Chat artifacts on disk
@@ -255,20 +457,45 @@ A run folder contains:
 - `user_turn_001.txt`
 - `assistant_turn_001.partial.txt` (during streaming)
 - `assistant_turn_001.txt` (final)
-- `turn_001.json` — metrics, tokens (best-effort), durations, and effective settings snapshot
+- `turn_001.json` — per-turn metrics (durations/tokens) + effective settings snapshot
 
 ---
 
 ## Troubleshooting
 
-### `--help` prints an error / exits non-zero
-Megamake should treat `--help` as a successful exit. If you see “flag: help requested” as an error again, ensure you special-case `flag.ErrHelp` and return exit code 0.
+### zsh: `no matches found: artifacts/**`
+Quote ignore globs:
+
+```sh
+megamake prompt . --ignore 'artifacts/**'
+```
+
+Or avoid globs entirely:
+
+```sh
+megamake prompt . --ignore artifacts
+```
+
+### Flags after path don’t work
+Megamake supports flags after the path for:
+- `prompt`, `doc create`, `diagnose`, `test`
+
+…and flags before/after URIs for:
+- `doc get`
+
+If you still see issues, you may be running an old binary. Run:
+
+```sh
+megamake --help
+```
+
+and rebuild if needed.
 
 ### Chat: provider verify/models fail with “network not enabled”
-Start server/CLI with `--net`, and if you use `--allow-domain`, ensure the provider host is allowlisted (e.g. `api.openai.com`).
+Start the server/CLI with `--net`, and if you use `--allow-domain`, ensure the provider host is allowlisted (e.g. `api.openai.com`).
 
 ### Chat: provider verify fails with “missing API key”
-Ensure you have a dotenv file at `<artifactDir>/MEGACHAT/.env` (or use `--env-file`) and restart the server so it loads the updated environment.
+Ensure `./megamake/artifacts/MEGACHAT/.env` contains the key (e.g. `OPENAI_API_KEY=...`) and restart the server so it reloads environment variables.
 
 ---
 

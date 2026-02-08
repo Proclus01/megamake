@@ -98,6 +98,15 @@ func (s OSScanner) Scan(req ports.ScanRequest) ([]project.FileRefV1, error) {
 		baseLower := strings.ToLower(base)
 		ext := strings.ToLower(filepath.Ext(baseLower))
 
+		// Auto-ignore megamake tool artifacts (since we now default to writing them into CWD).
+		// Examples:
+		//   MEGAPROMPT_20260207_225153Z.txt
+		//   MEGAPROMPT_latest.txt
+		//   MEGADOC_....txt, MEGATEST_....txt, MEGADIAG_....txt, etc.
+		if strings.HasPrefix(baseLower, "mega") && strings.HasSuffix(baseLower, ".txt") {
+			return nil
+		}
+
 		// explicit noisy / secret-ish excludes
 		if strings.HasPrefix(baseLower, ".env") {
 			return nil

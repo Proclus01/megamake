@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/megamake/megamake/internal/app/wiring"
@@ -114,6 +115,8 @@ func Run(argv []string) int {
 func runPrompt(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, argv []string, stdout io.Writer, stderr io.Writer) int {
 	log := console.New(stderr)
 
+	leadingPos, flagArgs := splitLeadingPositionals(argv)
+
 	fs := flag.NewFlagSet("prompt", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
@@ -125,7 +128,7 @@ func runPrompt(ctr wiring.Container, pol policy.Policy, globalArtifactDir string
 	var showSummary bool
 
 	var ignores stringListFlag
-	fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable). Example: --ignore build --ignore docs/generated/**")
+	fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable). Use quotes in zsh: --ignore 'megamake/artifacts/**'")
 	fs.Var(&ignores, "I", "Alias for --ignore (repeatable).")
 	fs.StringVar(&jsonOut, "json-out", "", "Write JSON report to this path (optional).")
 	fs.StringVar(&promptOut, "prompt-out", "", "Write agent prompt text to this path (optional).")
@@ -135,19 +138,46 @@ func runPrompt(ctr wiring.Container, pol policy.Policy, globalArtifactDir string
 	fs.BoolVar(&showSummary, "show-summary", true, "Print a brief summary to stderr.")
 	fs.Usage = func() { writePromptHelp(stderr) }
 
-	if err := fs.Parse(argv); err != nil {
+	argsToParse := argv
+	if len(leadingPos) > 0 {
+		argsToParse = flagArgs
+	}
+	if err := fs.Parse(argsToParse); err != nil {
 		writePromptHelp(stderr)
 		log.Error(fmt.Sprintf("failed to parse prompt flags: %v", err))
 		return exitUsage
 	}
 
 	rootPath := "."
-	if rest := fs.Args(); len(rest) >= 1 {
-		rootPath = rest[0]
+	if len(leadingPos) > 0 {
+		if len(leadingPos) != 1 {
+			log.Error("prompt: expected at most one positional path")
+			writePromptHelp(stderr)
+			return exitUsage
+		}
+		rootPath = leadingPos[0]
+	} else {
+		rest := fs.Args()
+		if len(rest) >= 1 {
+			rootPath = rest[0]
+			rest = rest[1:]
+		}
+		if len(rest) > 0 {
+			log.Error("prompt: unexpected extra arguments: " + strings.Join(rest, " "))
+			writePromptHelp(stderr)
+			return exitUsage
+		}
 	}
 
-	artifactRoot := computeArtifactDir(globalArtifactDir, rootPath)
+	// Resolve root relative to invocation directory (supports cd’ing aliases via MEGAMAKE_CALLER_PWD).
+	rootPath = resolveRootPathFromInvocation(rootPath)
+
+	artifactRoot := artifactDirForLocalTools(globalArtifactDir, log)
+
 	ignoreNames, ignoreGlobs := splitIgnores(ignores.values)
+	ignoreGlobs = append(ignoreGlobs, defaultLocalArtifactsIgnoreGlobs(rootPath)...)
+	ignoreNames = dedupeStrings(ignoreNames)
+	ignoreGlobs = dedupeStrings(ignoreGlobs)
 
 	res, err := ctr.Prompt.Generate(promptapp.GenerateRequest{
 		RootPath:        rootPath,
@@ -183,7 +213,12 @@ func runPrompt(ctr wiring.Container, pol policy.Policy, globalArtifactDir string
 
 	if showSummary {
 		log.Info("mode: prompt")
+		log.Info("invocation cwd: " + invocationCWD())
+		if cwd, err := os.Getwd(); err == nil {
+			log.Info("process cwd: " + cwd)
+		}
 		log.Info("root: " + rootPath)
+		log.Info("artifact dir: " + artifactRoot)
 		log.Info("files scanned: " + itoa(res.Report.FilesScanned) + ", included: " + itoa(res.Report.FilesIncluded))
 		log.Info("artifact: " + res.ArtifactPath)
 		log.Info("latest pointer: " + res.LatestPath)
@@ -235,7 +270,7 @@ func runDoc(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, a
 
 		var ignores stringListFlag
 
-		fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable).")
+		fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable). Use quotes in zsh: --ignore 'megamake/artifacts/**'")
 		fs.Var(&ignores, "I", "Alias for --ignore (repeatable).")
 		fs.BoolVar(&force, "force", false, "Force run even if directory does not look like a code project.")
 		fs.BoolVar(&showSummary, "show-summary", true, "Print a brief summary to stderr.")
@@ -253,18 +288,44 @@ func runDoc(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, a
 		fs.StringVar(&promptOut, "prompt-out", "", "Write agent prompt text to this path (optional).")
 		fs.Usage = func() { writeDocCreateHelp(stderr) }
 
-		if err := fs.Parse(args); err != nil {
+		leadingPos, flagArgs := splitLeadingPositionals(args)
+
+		argsToParse := args
+		if len(leadingPos) > 0 {
+			argsToParse = flagArgs
+		}
+		if err := fs.Parse(argsToParse); err != nil {
 			writeDocCreateHelp(stderr)
 			log.Error(fmt.Sprintf("failed to parse doc create flags: %v", err))
 			return exitUsage
 		}
 
 		rootPath := "."
-		if rest := fs.Args(); len(rest) >= 1 {
-			rootPath = rest[0]
+		if len(leadingPos) > 0 {
+			if len(leadingPos) != 1 {
+				log.Error("doc create: expected at most one positional path")
+				writeDocCreateHelp(stderr)
+				return exitUsage
+			}
+			rootPath = leadingPos[0]
+		} else {
+			if rest := fs.Args(); len(rest) >= 1 {
+				rootPath = rest[0]
+				rest = rest[1:]
+				if len(rest) > 0 {
+					log.Error("doc create: unexpected extra arguments: " + strings.Join(rest, " "))
+					writeDocCreateHelp(stderr)
+					return exitUsage
+				}
+			}
 		}
-		artifactRoot := computeArtifactDir(globalArtifactDir, rootPath)
+
+		artifactRoot := artifactDirForLocalTools(globalArtifactDir, log)
+
 		ignoreNames, ignoreGlobs := splitIgnores(ignores.values)
+		ignoreGlobs = append(ignoreGlobs, defaultLocalArtifactsIgnoreGlobs(rootPath)...)
+		ignoreNames = dedupeStrings(ignoreNames)
+		ignoreGlobs = dedupeStrings(ignoreGlobs)
 
 		res, err := ctr.Doc.Create(docapp.CreateRequest{
 			RootPath:            rootPath,
@@ -370,21 +431,41 @@ func runDoc(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, a
 		fs.BoolVar(&showSummary, "show-summary", true, "Print a brief summary to stderr.")
 		fs.Usage = func() { writeDocGetHelp(stderr) }
 
-		if err := fs.Parse(args); err != nil {
+		leadingURIs, flagArgs := splitLeadingPositionals(args)
+
+		// If URIs-first, parse flags from the tail; else parse from all args.
+		argsToParse := args
+		if len(leadingURIs) > 0 && len(flagArgs) > 0 {
+			argsToParse = flagArgs
+		}
+
+		if err := fs.Parse(argsToParse); err != nil {
 			writeDocGetHelp(stderr)
 			log.Error(fmt.Sprintf("failed to parse doc get flags: %v", err))
 			return exitUsage
 		}
 
-		uris := fs.Args()
+		uris := []string{}
+		uris = append(uris, leadingURIs...)
+		uris = append(uris, fs.Args()...) // supports URIs after flags too
+
+		// Clean URIs
+		var cleaned []string
+		for _, u := range uris {
+			u = strings.TrimSpace(u)
+			if u != "" {
+				cleaned = append(cleaned, u)
+			}
+		}
+		uris = cleaned
+
 		if len(uris) == 0 {
 			writeDocGetHelp(stderr)
 			log.Error("doc get: at least one URI/path is required")
 			return exitUsage
 		}
 
-		// In fetch mode (no repo root), default artifact dir is cwd unless --artifact-dir provided.
-		artifactRoot := computeArtifactDir(globalArtifactDir, "")
+		artifactRoot := artifactDirForLocalTools(globalArtifactDir, log)
 
 		res, err := ctr.Doc.Get(docapp.GetRequest{
 			URIs:         uris,
@@ -441,6 +522,8 @@ func runDoc(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, a
 func runDiagnose(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, argv []string, stdout io.Writer, stderr io.Writer) int {
 	log := console.New(stderr)
 
+	leadingPos, flagArgs := splitLeadingPositionals(argv)
+
 	fs := flag.NewFlagSet("diagnose", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
@@ -458,7 +541,7 @@ func runDiagnose(ctr wiring.Container, pol policy.Policy, globalArtifactDir stri
 	fs.IntVar(&timeoutSeconds, "timeout-seconds", 120, "Timeout in seconds per tool invocation.")
 	fs.Int64Var(&maxFileBytes, "max-file-bytes", 1_500_000, "Skip files larger than this many bytes during scanning.")
 	fs.BoolVar(&showSummary, "show-summary", true, "Print a brief summary to stderr.")
-	fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable).")
+	fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable). Use quotes in zsh: --ignore 'megamake/artifacts/**'")
 	fs.Var(&ignores, "I", "Alias for --ignore (repeatable).")
 
 	fs.StringVar(&jsonOut, "json-out", "", "Write JSON output to this file.")
@@ -466,19 +549,42 @@ func runDiagnose(ctr wiring.Container, pol policy.Policy, globalArtifactDir stri
 
 	fs.Usage = func() { writeDiagnoseHelp(stderr) }
 
-	if err := fs.Parse(argv); err != nil {
+	argsToParse := argv
+	if len(leadingPos) > 0 {
+		argsToParse = flagArgs
+	}
+	if err := fs.Parse(argsToParse); err != nil {
 		writeDiagnoseHelp(stderr)
 		log.Error(fmt.Sprintf("failed to parse diagnose flags: %v", err))
 		return exitUsage
 	}
 
 	rootPath := "."
-	if rest := fs.Args(); len(rest) >= 1 {
-		rootPath = rest[0]
+	if len(leadingPos) > 0 {
+		if len(leadingPos) != 1 {
+			log.Error("diagnose: expected at most one positional path")
+			writeDiagnoseHelp(stderr)
+			return exitUsage
+		}
+		rootPath = leadingPos[0]
+	} else {
+		rest := fs.Args()
+		if len(rest) >= 1 {
+			rootPath = rest[0]
+			rest = rest[1:]
+		}
+		if len(rest) > 0 {
+			log.Error("diagnose: unexpected extra arguments: " + strings.Join(rest, " "))
+			writeDiagnoseHelp(stderr)
+			return exitUsage
+		}
 	}
 
-	artifactRoot := computeArtifactDir(globalArtifactDir, rootPath)
+	artifactRoot := artifactDirForLocalTools(globalArtifactDir, log)
 	ignoreNames, ignoreGlobs := splitIgnores(ignores.values)
+	ignoreGlobs = append(ignoreGlobs, defaultLocalArtifactsIgnoreGlobs(rootPath)...)
+	ignoreNames = dedupeStrings(ignoreNames)
+	ignoreGlobs = dedupeStrings(ignoreGlobs)
 
 	res, err := ctr.Diagnose.Diagnose(diagapp.DiagnoseRequest{
 		RootPath:       rootPath,
@@ -554,6 +660,8 @@ func runDiagnose(ctr wiring.Container, pol policy.Policy, globalArtifactDir stri
 func runTest(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, argv []string, stdout io.Writer, stderr io.Writer) int {
 	log := console.New(stderr)
 
+	leadingPos, flagArgs := splitLeadingPositionals(argv)
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
@@ -584,7 +692,7 @@ func runTest(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, 
 	fs.StringVar(&regressionRange, "regression-range", "", "Enable regression suggestions by diffing this git range A..B (e.g., HEAD~3..HEAD).")
 	fs.BoolVar(&noRegression, "no-regression", false, "Disable regression scenarios entirely.")
 
-	fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable).")
+	fs.Var(&ignores, "ignore", "Directory names or glob paths to ignore (repeatable). Use quotes in zsh: --ignore 'megamake/artifacts/**'")
 	fs.Var(&ignores, "I", "Alias for --ignore (repeatable).")
 
 	fs.StringVar(&jsonOut, "json-out", "", "Write JSON output to this file.")
@@ -592,19 +700,43 @@ func runTest(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, 
 
 	fs.Usage = func() { writeTestHelp(stderr) }
 
-	if err := fs.Parse(argv); err != nil {
+	argsToParse := argv
+	if len(leadingPos) > 0 {
+		argsToParse = flagArgs
+	}
+	if err := fs.Parse(argsToParse); err != nil {
 		writeTestHelp(stderr)
 		log.Error(fmt.Sprintf("failed to parse test flags: %v", err))
 		return exitUsage
 	}
 
 	rootPath := "."
-	if rest := fs.Args(); len(rest) >= 1 {
-		rootPath = rest[0]
+	if len(leadingPos) > 0 {
+		if len(leadingPos) != 1 {
+			log.Error("test: expected at most one positional path")
+			writeTestHelp(stderr)
+			return exitUsage
+		}
+		rootPath = leadingPos[0]
+	} else {
+		rest := fs.Args()
+		if len(rest) >= 1 {
+			rootPath = rest[0]
+			rest = rest[1:]
+		}
+		if len(rest) > 0 {
+			log.Error("test: unexpected extra arguments: " + strings.Join(rest, " "))
+			writeTestHelp(stderr)
+			return exitUsage
+		}
 	}
 
-	artifactRoot := computeArtifactDir(globalArtifactDir, rootPath)
+	artifactRoot := artifactDirForLocalTools(globalArtifactDir, log)
+
 	ignoreNames, ignoreGlobs := splitIgnores(ignores.values)
+	ignoreGlobs = append(ignoreGlobs, defaultLocalArtifactsIgnoreGlobs(rootPath)...)
+	ignoreNames = dedupeStrings(ignoreNames)
+	ignoreGlobs = dedupeStrings(ignoreGlobs)
 
 	regMode := tpapp.RegressionMode{
 		Disabled: noRegression,
@@ -636,7 +768,6 @@ func runTest(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, 
 		return exitError
 	}
 
-	// Stdout: pseudo-XML test plan
 	if _, err := io.WriteString(stdout, res.ReportXML+"\n"); err != nil {
 		log.Error(fmt.Sprintf("failed writing to stdout: %v", err))
 		return exitError
@@ -659,6 +790,7 @@ func runTest(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, 
 		log.Info("mode: test")
 		log.Info("root: " + rootPath)
 		log.Info("artifact: " + res.ArtifactPath)
+		log.Info("artifact dir: " + artifactRoot)
 		log.Info("latest pointer: " + res.LatestPath)
 		log.Info("subjects: " + itoa(res.Report.Summary.TotalSubjects) + ", scenarios: " + itoa(res.Report.Summary.TotalScenarios))
 		if noRegression {
@@ -682,12 +814,12 @@ func runTest(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, 
 }
 
 func computeArtifactDir(globalArtifactDir string, repoPath string) string {
+	_ = repoPath // intentionally unused; artifacts should default to invocation CWD
+
 	if strings.TrimSpace(globalArtifactDir) != "" {
 		return globalArtifactDir
 	}
-	if strings.TrimSpace(repoPath) != "" {
-		return repoPath
-	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "."
@@ -696,17 +828,39 @@ func computeArtifactDir(globalArtifactDir string, repoPath string) string {
 }
 
 func splitIgnores(items []string) (ignoreNames []string, ignoreGlobs []string) {
+	normalize := func(s string) string {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return ""
+		}
+		s = strings.ReplaceAll(s, "\\", "/")
+		for strings.HasPrefix(s, "./") {
+			s = strings.TrimPrefix(s, "./")
+		}
+		s = strings.TrimPrefix(s, "/")
+		for strings.HasSuffix(s, "/") {
+			s = strings.TrimSuffix(s, "/")
+		}
+		return strings.TrimSpace(s)
+	}
+
 	for _, raw := range items {
-		s := strings.TrimSpace(raw)
+		s := normalize(raw)
 		if s == "" {
 			continue
 		}
-		if strings.Contains(s, "/") || strings.Contains(s, "*") || strings.Contains(s, "?") {
+
+		if strings.ContainsAny(s, "*?") {
 			ignoreGlobs = append(ignoreGlobs, s)
-		} else {
-			ignoreNames = append(ignoreNames, s)
+			continue
 		}
+		if strings.Contains(s, "/") {
+			ignoreGlobs = append(ignoreGlobs, s)
+			continue
+		}
+		ignoreNames = append(ignoreNames, s)
 	}
+
 	return ignoreNames, ignoreGlobs
 }
 
@@ -736,6 +890,118 @@ func itoa(n int) string {
 	return sign + string(buf[i:])
 }
 
+func isFlagToken(s string) bool {
+	s = strings.TrimSpace(s)
+	return strings.HasPrefix(s, "-") && s != "-" && s != "--"
+}
+
+func invocationCWD() string {
+	// If a wrapper/alias changes directories before running megamake,
+	// it can preserve the "real" working directory by setting this env var.
+	if v := strings.TrimSpace(os.Getenv("MEGAMAKE_CALLER_PWD")); v != "" {
+		// Prefer absolute for predictable artifact output paths.
+		if abs, err := filepath.Abs(v); err == nil {
+			return abs
+		}
+		return v
+	}
+
+	if cwd, err := os.Getwd(); err == nil && strings.TrimSpace(cwd) != "" {
+		return cwd
+	}
+	return "."
+}
+
+func resolveRootPathFromInvocation(rootPath string) string {
+	rootPath = strings.TrimSpace(rootPath)
+	if rootPath == "" {
+		return invocationCWD()
+	}
+
+	// If absolute already, keep it.
+	if filepath.IsAbs(rootPath) {
+		return rootPath
+	}
+
+	// Otherwise interpret relative paths against the invocation CWD (not process CWD).
+	base := invocationCWD()
+	return filepath.Clean(filepath.Join(base, rootPath))
+}
+
+func artifactDirForLocalTools(globalArtifactDir string, log console.Logger) string {
+	// Your requirement: prompt/doc/diagnose/test artifacts should be written to the directory
+	// where the command was invoked.
+	//
+	// So: ALWAYS use invocationCWD().
+	//
+	// We ignore global --artifact-dir for these tools (but warn to reduce confusion).
+	if strings.TrimSpace(globalArtifactDir) != "" {
+		log.Warn("note: global --artifact-dir is ignored for this command; writing tool artifacts to invocation directory instead")
+	}
+	return invocationCWD()
+}
+
+// splitLeadingPositionals splits argv into:
+// - positionals: all leading tokens until the first flag token
+// - flagArgs: remaining tokens (starting at first flag token)
+func splitLeadingPositionals(argv []string) (positionals []string, flagArgs []string) {
+	for i := 0; i < len(argv); i++ {
+		if argv[i] == "--" {
+			// Everything after -- is positional
+			positionals = append(positionals, argv[i+1:]...)
+			return positionals, nil
+		}
+		if isFlagToken(argv[i]) {
+			return positionals, argv[i:]
+		}
+		positionals = append(positionals, argv[i])
+	}
+	return positionals, nil
+}
+
+// defaultLocalArtifactsIgnoreGlobs returns ignore patterns for the canonical local artifacts dirs,
+// but ONLY if those dirs exist under rootPath.
+//
+// Covers your canonical layout:
+// - repo root:      megamake/artifacts
+// - inside megamake: artifacts
+func defaultLocalArtifactsIgnoreGlobs(rootPath string) []string {
+	if strings.TrimSpace(rootPath) == "" {
+		rootPath = "."
+	}
+
+	candidates := []string{
+		"megamake/artifacts",
+		"artifacts",
+	}
+
+	var out []string
+	for _, rel := range candidates {
+		p := filepath.Join(rootPath, filepath.FromSlash(rel))
+		st, err := os.Stat(p)
+		if err != nil || st == nil || !st.IsDir() {
+			continue
+		}
+		out = append(out, rel)
+		out = append(out, rel+"/**")
+	}
+	return dedupeStrings(out)
+}
+
+func dedupeStrings(xs []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, x := range xs {
+		x = strings.TrimSpace(x)
+		if x == "" || seen[x] {
+			continue
+		}
+		seen[x] = true
+		out = append(out, x)
+	}
+	return out
+}
+
 func writeRootHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake — cross-platform orchestration platform (patch6)
@@ -744,17 +1010,24 @@ Usage:
   megamake [global flags] <command> [args] [command flags]
 
 Global flags:
-  --artifact-dir <dir>
-  --net
-  --allow-domain <domain>
+  --artifact-dir <dir>     Directory where MEGA* artifacts and *_latest pointer files are written.
+                           Default: current working directory (where you run the command).
+  --net                    Enable network access (deny-by-default otherwise).
+  --allow-domain <domain>  Allowed domain when --net is set (repeatable). If none provided, all domains allowed when --net is set.
 
 Commands:
-  prompt [path]
-  doc create [path]
-  doc get <uri>...
-  diagnose [path]
-  test [path]
-  chat <subcommand>
+  prompt   [path] [flags]   (also accepts flags after path)
+  doc      <subcommand>
+  diagnose [path] [flags]   (also accepts flags after path)
+  test     [path] [flags]   (also accepts flags after path)
+  chat     <subcommand>
+
+Notes:
+  - prompt/doc/diagnose/test automatically ignore local artifacts directories (if present):
+      - megamake/artifacts/**
+      - artifacts/**
+  - If you use zsh and pass glob patterns to --ignore, quote them:
+      --ignore 'megamake/artifacts/**'
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }
@@ -762,7 +1035,30 @@ Commands:
 func writePromptHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake prompt [path] [flags]
-Use --help on the binary for the full help text.
+megamake prompt [flags] [path]
+
+Generates a <context> blob from the codebase.
+
+Flags:
+  --ignore X / -I X           Ignore directory name OR path/glob (repeatable).
+                              Examples:
+                                --ignore artifacts
+                                --ignore megamake/artifacts
+                                --ignore 'docs/generated/**'
+                              zsh note: quote globs or zsh may expand/raise "no matches found".
+  --max-file-bytes N          Skip files larger than N bytes (default: 1500000).
+  --force                     Run even if directory does not look like a code project.
+  --copy                      Best-effort: copy the generated <context> to clipboard.
+  --json-out PATH             Write JSON report to PATH (optional).
+  --prompt-out PATH           Write agent prompt text to PATH (optional).
+  --show-summary=true|false   Print a brief summary to stderr (default: true).
+
+Defaults:
+  - Artifact output directory: current working directory
+    (override with global --artifact-dir).
+  - Automatically ignores local artifacts directories if present:
+      - megamake/artifacts/**
+      - artifacts/**
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }
@@ -770,7 +1066,14 @@ Use --help on the binary for the full help text.
 func writeDocHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake doc <subcommand>
-Subcommands: create, get
+
+Subcommands:
+  create   Create documentation report from a local repo directory.
+  get      Fetch and summarize docs from URIs/paths (HTTP(S) requires --net).
+
+Notes:
+  - doc create accepts flags after the path.
+  - doc get accepts flags before/after URIs (see doc get --help).
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }
@@ -778,7 +1081,41 @@ Subcommands: create, get
 func writeDocCreateHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake doc create [path] [flags]
-(see previous patch help text; options include --uml, --tree-depth, --ignore, etc.)
+megamake doc create [flags] [path]
+
+Generates a documentation report (tree, import graph, purpose, optional UML).
+
+Common flags:
+  --ignore X / -I X           Ignore directory name OR path/glob (repeatable).
+                              Examples:
+                                --ignore artifacts
+                                --ignore megamake/artifacts
+                                --ignore 'docs/generated/**'
+                              zsh note: quote globs or zsh may expand/raise "no matches found".
+  --force
+  --show-summary=true|false
+  --max-file-bytes N
+  --max-analyze-bytes N
+  --tree-depth N
+
+UML flags:
+  --uml ascii,plantuml|ascii|plantuml|none
+  --uml-granularity file|module|package
+  --uml-max-nodes N
+  --uml-include-io=true|false
+  --uml-include-endpoints=true|false
+  --uml-out PATH
+
+Output flags:
+  --json-out PATH
+  --prompt-out PATH
+
+Defaults:
+  - Artifact output directory: current working directory
+    (override with global --artifact-dir).
+  - Automatically ignores local artifacts directories if present:
+      - megamake/artifacts/**
+      - artifacts/**
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }
@@ -786,17 +1123,32 @@ megamake doc create [path] [flags]
 func writeDocGetHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake doc get <uri>... [flags]
+megamake doc get [flags] <uri>...
+
+Fetches and summarizes docs from one or more URIs/paths.
 
 Flags:
-  --crawl-depth N
-  --json-out PATH
-  --prompt-out PATH
-  --show-summary=true|false
+  --crawl-depth N             Crawl depth for HTTP fetch (default: 1).
+  --json-out PATH             Write JSON report to PATH (optional).
+  --prompt-out PATH           Write agent prompt text to PATH (optional).
+  --show-summary=true|false   Print a brief summary to stderr (default: true).
+
+Flag ordering:
+  - Flags may appear before OR after URIs.
+    Examples:
+      megamake doc get https://example.com --crawl-depth 2
+      megamake doc get --crawl-depth 2 https://example.com
+  - Use "--" to force the rest to be treated as positional URIs:
+      megamake doc get --crawl-depth 2 -- https://example.com?x=--weird--
 
 Network policy:
-  - HTTP(S) requires --net
+  - HTTP(S) requires global --net
   - If --net and --allow-domain is provided, only those domains (and subdomains) are allowed
   - Local paths are always allowed
+
+Defaults:
+  - Artifact output directory: current working directory
+    (override with global --artifact-dir).
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }
@@ -804,16 +1156,31 @@ Network policy:
 func writeDiagnoseHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake diagnose [path] [flags]
+megamake diagnose [flags] [path]
+
+Runs multi-language diagnostics (best-effort) and emits a report + fix prompt.
 
 Flags:
   --force
   --include-tests
   --timeout-seconds N
   --max-file-bytes N
-  --ignore X / -I X
+  --ignore X / -I X           Ignore directory name OR path/glob (repeatable).
+                              Examples:
+                                --ignore artifacts
+                                --ignore megamake/artifacts
+                                --ignore 'docs/generated/**'
+                              zsh note: quote globs or zsh may expand/raise "no matches found".
   --json-out PATH
   --prompt-out PATH
   --show-summary=true|false
+
+Defaults:
+  - Artifact output directory: current working directory
+    (override with global --artifact-dir).
+  - Automatically ignores local artifacts directories if present:
+      - megamake/artifacts/**
+      - artifacts/**
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }
@@ -821,20 +1188,35 @@ Flags:
 func writeTestHelp(w io.Writer) {
 	help := strings.TrimSpace(`
 megamake test [path] [flags]
+megamake test [flags] [path]
+
+Builds a test plan (subjects + scenarios) for the repo.
 
 Flags:
   --force
   --limit-subjects N
-  --levels csv               (smoke,unit,integration,e2e,regression)
+  --levels csv               (smoke,unit,integration,e2e,regression) (default: all)
   --max-file-bytes N
   --max-analyze-bytes N
-  --ignore X / -I X
+  --ignore X / -I X           Ignore directory name OR path/glob (repeatable).
+                              Examples:
+                                --ignore artifacts
+                                --ignore megamake/artifacts
+                                --ignore 'docs/generated/**'
+                              zsh note: quote globs or zsh may expand/raise "no matches found".
   --regression-since REF
   --regression-range A..B
   --no-regression
   --json-out PATH
   --prompt-out PATH
   --show-summary=true|false
+
+Defaults:
+  - Artifact output directory: current working directory
+    (override with global --artifact-dir).
+  - Automatically ignores local artifacts directories if present:
+      - megamake/artifacts/**
+      - artifacts/**
 `)
 	_, _ = io.WriteString(w, help+"\n")
 }

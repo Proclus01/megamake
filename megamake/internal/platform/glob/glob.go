@@ -8,13 +8,38 @@ import (
 	"strings"
 )
 
+// normalizePathish makes patterns and relpaths behave consistently.
+// - forces POSIX slashes
+// - strips leading "./" (repeated)
+// - strips a single leading "/" to tolerate accidental absolute-ish patterns
+func normalizePathish(s string) string {
+	x := strings.TrimSpace(s)
+	x = filepath.ToSlash(x)
+
+	for strings.HasPrefix(x, "./") {
+		x = strings.TrimPrefix(x, "./")
+	}
+	if strings.HasPrefix(x, "/") {
+		x = strings.TrimPrefix(x, "/")
+	}
+	return x
+}
+
 // Match checks if a POSIX-style relPath matches a glob pattern supporting *, **, ?.
-// - *  matches within a path segment (no '/')
-// - ** matches across directories (may include '/')
-// - ?  matches a single character (including '/'; consistent with common glob semantics here)
+// Special-case convenience:
+// - "foo/**" also matches "foo" (directory itself), not just its children.
 func Match(relPath string, pattern string) bool {
-	rel := filepath.ToSlash(relPath)
-	pat := filepath.ToSlash(pattern)
+	rel := normalizePathish(relPath)
+	pat := normalizePathish(pattern)
+
+	// Convenience: treat "dir/**" as also matching "dir"
+	if strings.HasSuffix(pat, "/**") {
+		base := strings.TrimSuffix(pat, "/**")
+		if rel == base {
+			return true
+		}
+	}
+
 	re := globToRegex(pat)
 	ok, err := regexp.MatchString(re, rel)
 	if err != nil {
@@ -26,7 +51,7 @@ func Match(relPath string, pattern string) bool {
 // FindMatches returns filesystem paths under root that match the given pattern.
 // If the pattern contains no glob metacharacters, it checks direct existence.
 func FindMatches(root string, pattern string) ([]string, error) {
-	pat := filepath.ToSlash(pattern)
+	pat := normalizePathish(pattern)
 	if !strings.ContainsAny(pat, "*?") {
 		cand := filepath.Join(root, filepath.FromSlash(pat))
 		if _, err := os.Stat(cand); err == nil {
