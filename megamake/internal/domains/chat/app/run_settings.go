@@ -188,7 +188,7 @@ func normalizeSettings(s contractchat.SettingsV1) contractchat.SettingsV1 {
 		s.Effort = contractchat.EffortHigh
 	}
 	if s.MaxOutputTokens <= 0 {
-		s.MaxOutputTokens = 4096
+		s.MaxOutputTokens = 999999
 	}
 	return s
 }

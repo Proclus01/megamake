@@ -289,7 +289,7 @@ func runChat(ctr wiring.Container, pol policy.Policy, globalArtifactDir string, 
 			fs.StringVar(&verbosity, "verbosity", "", "low|medium|high (optional).")
 			fs.StringVar(&effort, "effort", "", "minimal|low|medium|high (optional).")
 			fs.BoolVar(&summaryAuto, "summary-auto", true, "If true, enable summary auto (best-effort).")
-			fs.IntVar(&maxOutputTokens, "max-output-tokens", 4096, "Default max output tokens (best-effort).")
+			fs.IntVar(&maxOutputTokens, "max-output-tokens", 999999, "Default max output tokens (best-effort).")
 
 			fs.BoolVar(&toolWebSearch, "tool-web-search", false, "Enable web_search tool (best-effort).")
 			fs.BoolVar(&toolCodeInterpreter, "tool-code-interpreter", false, "Enable code_interpreter tool (best-effort).")

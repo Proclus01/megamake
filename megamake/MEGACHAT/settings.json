@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "textFormat": "text",
+  "verbosity": "high",
+  "effort": "high",
+  "summaryAuto": true,
+  "maxOutputTokens": 999999,
+  "tools": {},
+  "updated_ts": "2026-02-08T01:58:36.098844Z"
+}

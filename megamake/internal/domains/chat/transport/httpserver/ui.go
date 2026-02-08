@@ -162,7 +162,7 @@ const uiIndexHTML = `<!doctype html>
         </label>
 
         <label>maxOutputTokens</label>
-        <input id="rsMaxOutputTokens" type="number" min="1" step="1" value="4096" disabled />
+        <input id="rsMaxOutputTokens" type="number" min="1" step="1" value="999999" disabled />
 
         <div class="panelTitleMini" style="margin-top:8px;">Tools</div>
         <label class="rowCheck"><input id="rsToolWeb" type="checkbox" disabled /> <span>web_search</span></label>

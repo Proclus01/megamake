@@ -342,7 +342,7 @@ func (s *Service) ConfigSet(req ConfigSetRequest) (ConfigSetResult, error) {
 		req.Settings.Effort = contractchat.EffortHigh
 	}
 	if req.Settings.MaxOutputTokens <= 0 {
-		req.Settings.MaxOutputTokens = 4096
+		req.Settings.MaxOutputTokens = 999999
 	}
 
 	if err := s.Settings.Write(ports.WriteSettingsRequest{
@@ -362,7 +362,7 @@ func defaultSettings() contractchat.SettingsV1 {
 		Verbosity:       contractchat.VerbosityHigh,
 		Effort:          contractchat.EffortHigh,
 		SummaryAuto:     true,
-		MaxOutputTokens: 4096,
+		MaxOutputTokens: 999999,
 		Tools: contractchat.ToolsV1{
 			WebSearch:       false,
 			CodeInterpreter: false,
