@@ -584,7 +584,7 @@ type workerStreamHandler struct {
 func (h *workerStreamHandler) OnStart() {}
 
 func (h *workerStreamHandler) OnDelta(delta string) {
-	if strings.TrimSpace(delta) == "" {
+	if delta == "" {
 		return
 	}
 	if h.isCanceled != nil && h.isCanceled() {
