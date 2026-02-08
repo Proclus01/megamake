@@ -250,23 +250,10 @@ export MEGAMAKE_HOME="/ABSOLUTE/PATH/TO/your/checkout/megamake/megamake"
 
 megamake() {
   local caller="$PWD"
-
   (
     export MEGAMAKE_CALLER_PWD="$caller"
     cd "$MEGAMAKE_HOME" || exit 1
-
-    if [[ ! -x ./megamake ]]; then
-      echo "megamake: binary not found or not executable at: $MEGAMAKE_HOME/megamake" >&2
-      echo "megamake: build it with: (cd \"$MEGAMAKE_HOME\" && go build -o ./megamake ./cmd/megamake)" >&2
-      exit 1
-    fi
-
-    # Chat should use repo-local artifacts. Local tools ignore --artifact-dir.
-    if [[ "$1" == "chat" ]]; then
-      ./megamake --artifact-dir ./artifacts "$@"
-    else
-      ./megamake "$@"
-    fi
+    go run ./cmd/megamake "$@"
   )
 }
 # --- /megamake ---
